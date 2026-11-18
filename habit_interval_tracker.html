@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>Habit Interval Tracker</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--panel2:#1a2940;--line:#2a3a52;--text:#edf3fb;--muted:#9aabc1;--green:#53d6a0;--blue:#8db8ff;--red:#ff8585}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#0b1220,#101c2d 65%,#0b1220);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+main{width:min(760px,100% - 32px);margin:38px auto 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}.eyebrow{color:var(--green);font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;font-weight:700}.top h1{font-size:clamp(1.5rem,5vw,2.1rem);margin:3px 0}.local{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:6px 10px}
+.card{background:rgba(19,30,48,.94);border:1px solid var(--line);border-radius:20px;padding:22px;margin:14px 0;box-shadow:0 12px 35px #0002}.hero{background:linear-gradient(135deg,#142b35,#14243b);border-color:#285349}.label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:700}.timer{font-size:clamp(2.5rem,11vw,4.6rem);font-weight:750;letter-spacing:.025em;line-height:1.18;margin:9px 0 4px;font-variant-numeric:tabular-nums}.sub{color:var(--muted);font-size:.92rem}.deadline{margin-top:16px;padding-top:14px;border-top:1px solid #ffffff1c;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.deadline strong{font-weight:650}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:15px;padding:16px}.stat strong{display:block;font-size:1.65rem;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:.82rem}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:13px 16px;font-weight:700;transition:filter .15s,transform .08s}button:active{transform:scale(.985)}button:hover{filter:brightness(1.08)}.primary{background:var(--green);color:#092218;width:100%;font-size:1.02rem;padding:16px}.secondary{background:#263750;color:var(--text);border:1px solid var(--line)}.danger{background:#482b36;color:#ffc0c0;border:1px solid #70404c}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.actions button{flex:1}
+h2{font-size:1.12rem;margin:0 0 14px}.history{display:flex;flex-direction:column;gap:9px}.entry{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 13px;background:#101a2a;border:1px solid var(--line);border-radius:12px}.entry small{display:block;color:var(--muted)}.entry .right{text-align:right;white-space:nowrap}.entry .right strong{display:block}.empty{color:var(--muted);padding:12px 0}.note{color:var(--muted);font-size:.85rem;margin:12px 0 0}.message{min-height:1.4em;color:var(--green);font-size:.88rem;margin-top:9px}
+dialog{width:min(440px,calc(100% - 28px));background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:22px}dialog::backdrop{background:#000a}label{display:block;color:var(--muted);font-size:.85rem;margin:12px 0 6px}input{width:100%;padding:12px;background:#0d1726;color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit} .dialog-actions{display:flex;gap:9px;margin-top:17px}.dialog-actions button{flex:1}
+footer{color:var(--muted);font-size:.78rem;text-align:center;margin:25px 0}
+@media(max-width:480px){main{margin-top:22px}.card{padding:17px}.entry{align-items:flex-start}.entry .right{white-space:normal}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><div class="eyebrow">Personal progress</div><h1>Habit Interval Tracker</h1></div>
+    <div class="local">Saved on this device</div>
+  </div>
+
+  <section class="card hero">
+    <div class="label">Time since your last occurrence</div>
+    <div class="timer" id="elapsed">—</div>
+    <div class="sub" id="targetText">Record two occurrences to calculate your first target.</div>
+    <div class="deadline"><span class="sub" id="targetStatus">Your target</span><strong id="deadline">Not set</strong></div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><strong id="count">0</strong><span>Recorded occurrences</span></div>
+    <div class="stat"><strong id="longest">—</strong><span>Longest interval between records</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Record an occurrence</h2>
+    <p class="sub">If it happens, record it honestly. The app uses the time between your latest two records as the next target.</p>
+    <button class="primary" id="recordBtn">＋ I did the habit</button>
+    <div class="actions">
+      <button class="secondary" id="manualBtn">Add / correct date &amp; time</button>
+      <button class="secondary" id="exportBtn">Export backup</button>
+    </div>
+    <div class="message" id="message" role="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>Occurrence history</h2>
+    <div class="history" id="history"><div class="empty">No records yet. Your first record will appear here.</div></div>
+    <p class="note">Intervals are calculated between consecutive records. Editing or deleting a record recalculates the target.</p>
+  </section>
+
+  <section class="card">
+    <h2>How the target works</h2>
+    <p class="sub">After your second record, the interval between the first and second becomes your target. After the next record, the interval between the second and third becomes the new target, and so on.</p>
+    <p class="sub">When the target time passes, the timer keeps counting. It does not automatically increase the target; the next recorded occurrence provides the next measured interval.</p>
+  </section>
+  <footer>Your records are stored in this browser on this device. Export a backup before clearing browser data or changing devices.</footer>
+</main>
+
+<dialog id="editDialog">
+  <h2 id="dialogTitle">Add occurrence</h2>
+  <label for="dateInput">Date and time</label>
+  <input id="dateInput" type="datetime-local">
+  <div class="dialog-actions">
+    <button class="secondary" id="cancelDialog">Cancel</button>
+    <button class="primary" id="saveDialog">Save record</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const KEY = "habitIntervalTracker.records.v1";
+  let records = loadRecords();
+  let editingId = null;
+  const $ = id => document.getElementById(id);
+
+  function loadRecords() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
+      return Array.isArray(parsed) ? parsed.filter(x => x && Number.isFinite(x.time)).sort((a,b)=>a.time-b.time) : [];
+    } catch { return []; }
+  }
+  function persist() {
+    localStorage.setItem(KEY, JSON.stringify(records));
+    render();
+  }
+  function fmtDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return "—";
+    let total = Math.floor(ms / 1000);
+    const days = Math.floor(total / 86400); total %= 86400;
+    const hours = Math.floor(total / 3600); total %= 3600;
+    const mins = Math.floor(total / 60); const secs = total % 60;
+    if (days) return `${days}d ${hours}h ${mins}m`;
+    if (hours) return `${hours}h ${mins}m ${secs}s`;
+    if (mins) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+  }
+  function fmtDate(ms) {
+    return new Intl.DateTimeFormat(undefined,{dateStyle:"medium",timeStyle:"short"}).format(new Date(ms));
+  }
+  function getIntervals() {
+    return records.slice(1).map((r,i)=>r.time-records[i].time).filter(x=>x>=0);
+  }
+  function render() {
+    const now = Date.now();
+    const last = records.at(-1);
+    const intervals = getIntervals();
+    $("count").textContent = records.length;
+    $("longest").textContent = intervals.length ? fmtDuration(Math.max(...intervals)) : "—";
+    if (!last) {
+      $("elapsed").textContent = "—";
+      $("targetText").textContent = "Record two occurrences to calculate your first target.";
+      $("targetStatus").textContent = "Your target";
+      $("deadline").textContent = "Not set";
+    } else {
+      $("elapsed").textContent = fmtDuration(now-last.time);
+      if (intervals.length) {
+        const target = intervals.at(-1);
+        const due = last.time + target;
+        $("targetText").textContent = `Current target: ${fmtDuration(target)}. Keep going; your timer continues beyond the target.`;
+        $("targetStatus").textContent = now < due ? "Target deadline" : "Target reached";
+        $("deadline").textContent = `${fmtDate(due)}${now >= due ? " ✓" : ""}`;
+      } else {
+        $("targetText").textContent = "One more occurrence is needed to calculate your first target.";
+        $("targetStatus").textContent = "Your target";
+        $("deadline").textContent = "Not set yet";
+      }
+    }
+    const history = $("history");
+    if (!records.length) {
+      history.innerHTML = '<div class="empty">No records yet. Your first record will appear here.</div>';
+    } else {
+      history.innerHTML = "";
+      [...records].reverse().forEach((r, reverseIndex) => {
+        const index = records.length - 1 - reverseIndex;
+        const interval = index > 0 ? r.time - records[index-1].time : null;
+        const row = document.createElement("div");
+        row.className = "entry";
+        const left = document.createElement("div");
+        const date = document.createElement("strong"); date.textContent = fmtDate(r.time);
+        const detail = document.createElement("small"); detail.textContent = interval === null ? "First record" : `Since previous: ${fmtDuration(interval)}`;
+        left.append(date,detail);
+        const right = document.createElement("div"); right.className = "right";
+        const edit = document.createElement("button"); edit.className="secondary"; edit.textContent="Edit"; edit.style.padding="7px 10px"; edit.style.fontSize=".8rem";
+        edit.addEventListener("click",()=>openDialog(r.id));
+        const del = document.createElement("button"); del.className="danger"; del.textContent="Delete"; del.style.padding="7px 10px"; del.style.fontSize=".8rem"; del.style.marginLeft="5px";
+        del.addEventListener("click",()=>deleteRecord(r.id));
+        right.append(edit,del); row.append(left,right); history.append(row);
+      });
+    }
+  }
+  function toLocalInput(ms) {
+    const d = new Date(ms);
+    const pad = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function openDialog(id=null) {
+    editingId = id;
+    const existing = records.find(r=>r.id===id);
+    $("dialogTitle").textContent = existing ? "Edit occurrence" : "Add occurrence";
+    $("dateInput").value = toLocalInput(existing ? existing.time : Date.now());
+    $("editDialog").showModal();
+  }
+  $("recordBtn").addEventListener("click",()=>{
+    records.push({id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random(),time:Date.now()});
+    records.sort((a,b)=>a.time-b.time);
+    persist();
+    $("message").textContent = "Occurrence recorded. Your target has been recalculated.";
+  });
+  $("manualBtn").addEventListener("click",()=>openDialog());
+  $("cancelDialog").addEventListener("click",()=>$("editDialog").close());
+  $("saveDialog").addEventListener("click",()=>{
+    const value = $("dateInput").value;
+    const time = new Date(value).getTime();
+    if (!value || !Number.isFinite(time)) { alert("Please choose a valid date and time."); return; }
+    if (time > Date.now() + 60000) { alert("Please choose a date and time that is not in the future."); return; }
+    if (editingId) {
+      const item = records.find(r=>r.id===editingId);
+      if (item) item.time=time;
+    } else {
+      records.push({id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random(),time});
+    }
+    records.sort((a,b)=>a.time-b.time);
+    persist(); $("editDialog").close(); $("message").textContent="Record saved and intervals recalculated.";
+  });
+  function deleteRecord(id) {
+    if (!confirm("Delete this occurrence? The target will be recalculated.")) return;
+    records=records.filter(r=>r.id!==id); persist(); $("message").textContent="Record deleted.";
+  }
+  $("exportBtn").addEventListener("click",()=>{
+    const blob = new Blob([JSON.stringify({app:"Habit Interval Tracker",version:1,records},null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download="habit-tracker-backup.json"; a.click(); URL.revokeObjectURL(url);
+    $("message").textContent="Backup exported.";
+  });
+  render();
+  setInterval(()=>{
+    if(records.length){$("elapsed").textContent=fmtDuration(Date.now()-records.at(-1).time);}
+    const intervals=getIntervals(), last=records.at(-1);
+    if(last && intervals.length){
+      const due=last.time+intervals.at(-1);
+      $("targetStatus").textContent=Date.now()<due?"Target deadline":"Target reached";
+      $("deadline").textContent=fmtDate(due)+(Date.now()>=due?" ✓":"");
+    }
+  },1000);
+})();
+</script>
+</body>
+</html>
